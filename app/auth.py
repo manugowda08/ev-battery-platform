@@ -1,34 +1,37 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
-from app import app
 import bcrypt
-from supabase import Client
+from .. import app  # Global app with supabase
 
-auth = Blueprint('auth', __name__)
+auth_bp = Blueprint('auth', __name__)
 
-@auth.route('/login', methods=['GET', 'POST'])
+@auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         email = request.form['email']
         password = request.form['password'].encode('utf-8')
         
-        # Get user from Supabase
+        # Query Supabase users table
         response = app.supabase.table('users').select('*').eq('email', email).execute()
-        user = response.data[0] if response.data else None
+        user_data = response.data[0] if response.data else None
         
-        if user and bcrypt.checkpw(password, user['password_hash'].encode('utf-8')):
-            session['user_id'] = user['id']
-            session['email'] = user['email']
-            session['role'] = user['role']
+        if user_data and bcrypt.checkpw(password, user_data['password_hash'].encode('utf-8')):
+            session['user_id'] = str(user_data['id'])
+            session['email'] = user_data['email']
+            session['role'] = user_data['role']
             
-            if user['role'] == 'admin':
-                return redirect(url_for('admin_dashboard'))
-            elif user['role'] == 'owner':
-                return redirect(url_for('owner_dashboard'))
-            elif user['role'] == 'center':
-                return redirect(url_for('center_dashboard'))
+            if user_data['role'] == 'admin':
+                return redirect(url_for('main.admin_dashboard'))
+            elif user_data['role'] == 'owner':
+                return redirect(url_for('main.owner_dashboard'))
+            elif user_data['role'] == 'center':
+                return redirect(url_for('main.center_dashboard'))
         
-        flash('❌ Invalid email or password!')
+        flash('❌ Invalid credentials!')
     
     return render_template('login.html')
 
-app.register_blueprint(auth)
+@auth_bp.route('/logout')
+def logout():
+    session.clear()
+    flash('✅ Logged out!')
+    return redirect(url_for('auth.login'))
