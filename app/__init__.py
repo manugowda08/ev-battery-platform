@@ -4,7 +4,7 @@ from supabase import create_client, Client
 import bcrypt
 
 def create_app():
-    app = Flask(__name__)
+    app = Flask(__name__, template_folder='templates', static_folder='static')
     app.secret_key = os.getenv('SECRET_KEY', 'dev-secret')
     
     @app.before_request
@@ -32,12 +32,15 @@ def create_app():
         except Exception as e:
             return f"❌ Error: {str(e)}"
     
-    # LOGIN - Uses your login.html
     @app.route('/login', methods=['GET', 'POST'])
     def login():
         if request.method == 'POST':
             email = request.form['email']
             password = request.form['password'].encode('utf-8')
+            
+            if not app.supabase:
+                flash('❌ Database not connected!')
+                return render_template('login.html')
             
             try:
                 response = app.supabase.table('users').select('*').eq('email', email).execute()
@@ -47,17 +50,18 @@ def create_app():
                     session['user_id'] = str(user_data['id'])
                     session['email'] = user_data['email']
                     session['role'] = user_data['role']
+                    flash('✅ Login successful!')
                     
                     if user_data['role'] == 'admin':
-                        return redirect(url_for('admin_dashboard'))
+                        return redirect('/admin')
                     elif user_data['role'] == 'owner':
-                        return redirect(url_for('owner_dashboard'))
+                        return redirect('/owner-dashboard')
                     elif user_data['role'] == 'center':
-                        return redirect(url_for('center_dashboard'))
+                        return redirect('/center-dashboard')
                 
                 flash('❌ Invalid credentials!')
-            except:
-                flash('❌ Database error!')
+            except Exception as e:
+                flash(f'❌ Database error: {str(e)}')
         
         return render_template('login.html')
     
@@ -65,46 +69,42 @@ def create_app():
     def logout():
         session.clear()
         flash('✅ Logged out!')
-        return redirect(url_for('login'))
+        return redirect('/login')
     
-    # DASHBOARDS - Use your existing templates
     @app.route('/admin')
     def admin_dashboard():
         if session.get('role') != 'admin':
-            return redirect(url_for('login'))
-        try:
-            centers = app.supabase.table('centers').eq('status', 'pending').execute().data or []
-            return render_template('dashboard_admin.html', pending_centers=centers)
-        except:
-            return render_template('dashboard_admin.html', pending_centers=[])
+            return redirect('/login')
+        centers = []
+        if app.supabase:
+            try:
+                centers = app.supabase.table('centers').eq('status', 'pending').execute().data or []
+            except:
+                pass
+        return render_template('dashboard_admin.html', pending_centers=centers)
     
     @app.route('/owner-dashboard')
     def owner_dashboard():
         if session.get('role') != 'owner':
-            return redirect(url_for('login'))
-        try:
-            batteries = app.supabase.table('batteries').eq('user_id', session['user_id']).execute().data or []
-            return render_template('dashboard_owner.html', batteries=batteries)
-        except:
-            return render_template('dashboard_owner.html', batteries=[])
+            return redirect('/login')
+        batteries = []
+        if app.supabase:
+            try:
+                batteries = app.supabase.table('batteries').eq('user_id', session['user_id']).execute().data or []
+            except:
+                pass
+        return render_template('dashboard_owner.html', batteries=batteries)
     
     @app.route('/center-dashboard')
     def center_dashboard():
         if session.get('role') != 'center':
-            return redirect(url_for('login'))
-        try:
-            requests = app.supabase.table('pickup_requests').eq('status', 'Pending').execute().data or []
-            return render_template('dashboard_center.html', requests=requests)
-        except:
-            return render_template('dashboard_center.html', requests=[])
-        # Register blueprints (your existing files)
-    try:
-        from app.auth import auth_bp
-        from app.routes import main_bp
-        app.register_blueprint(auth_bp)
-        app.register_blueprint(main_bp)
-    except ImportError:
-        pass  # Skip if blueprints missing
+            return redirect('/login')
+        requests = []
+        if app.supabase:
+            try:
+                requests = app.supabase.table('pickup_requests').eq('status', 'Pending').execute().data or []
+            except:
+                pass
+        return render_template('dashboard_center.html', requests=requests)
     
     return app
-
