@@ -3,6 +3,7 @@ gunicorn==22.0.0
 supabase==2.4.0
 bcrypt==4.1.2
 python-dotenv==1.0.1
+Flask-Login==0.6.3
 Werkzeug==3.0.3
 scikit-learn==1.5.1
 pandas==2.2.2
