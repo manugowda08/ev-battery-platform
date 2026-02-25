@@ -14,16 +14,10 @@ def create_app():
             os.getenv('SUPABASE_ANON_KEY')
         )
     
-    @app.route('/')
-    def index():
-        return "✅ EV Battery Platform LIVE!"
-    
-    @app.route('/test-supabase')
-    def test_supabase():
-        try:
-            users = app.supabase.table('users').select('count').execute()
-            return f"✅ Supabase Connected! {len(users.data)} users"
-        except Exception as e:
-            return f"❌ Error: {str(e)}"
+    # Register blueprints
+    from app.auth import auth_bp
+    from app.routes import main_bp
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(main_bp)
     
     return app
