@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 import os
 from supabase import create_client, Client
 import bcrypt
@@ -14,9 +14,11 @@ def create_app():
                 os.getenv('SUPABASE_URL'),
                 os.getenv('SUPABASE_ANON_KEY')
             )
-        except:
+        except Exception as e:
             app.supabase = None
+            print(f"Supabase init error: {e}")
     
+    # Routes
     @app.route('/')
     def index():
         return render_template('index.html')
@@ -46,21 +48,24 @@ def create_app():
                 response = app.supabase.table('users').select('*').eq('email', email).execute()
                 user_data = response.data[0] if response.data else None
                 
-                # ✅ FIXED BCRYPT CHECK
+                # ✅ FIXED BCRYPT - Safe handling
                 if user_data and user_data.get('password_hash'):
-                    stored_hash = user_data['password_hash'].encode('utf-8') if isinstance(user_data['password_hash'], str) else user_data['password_hash']
-                    if bcrypt.checkpw(password, stored_hash):
-                        session['user_id'] = str(user_data['id'])
-                        session['email'] = user_data['email']
-                        session['role'] = user_data['role']
-                        flash('✅ Login successful!')
-                        
-                        if user_data['role'] == 'admin':
-                            return redirect('/admin')
-                        elif user_data['role'] == 'owner':
-                            return redirect('/owner-dashboard')
-                        elif user_data['role'] == 'center':
-                            return redirect('/center-dashboard')
+                    try:
+                        stored_hash = user_data['password_hash'].encode('utf-8') if isinstance(user_data['password_hash'], str) else user_data['password_hash']
+                        if bcrypt.checkpw(password, stored_hash):
+                            session['user_id'] = str(user_data['id'])
+                            session['email'] = user_data['email']
+                            session['role'] = user_data['role']
+                            flash('✅ Login successful!')
+                            
+                            if user_data['role'] == 'admin':
+                                return redirect('/admin')
+                            elif user_data['role'] == 'owner':
+                                return redirect('/owner-dashboard')
+                            elif user_data['role'] == 'center':
+                                return redirect('/center-dashboard')
+                    except:
+                        pass
                 
                 flash('❌ Invalid credentials!')
             except Exception as e:
