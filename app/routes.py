@@ -1,6 +1,5 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session
-from .. import app
-from .ml_model import predict_grade
+from flask import Blueprint, render_template, request, redirect, session, flash, jsonify
+from app.ml_model import predict_grade
 
 main_bp = Blueprint('main', __name__)
 
@@ -12,7 +11,7 @@ def index():
 def dashboard():
     role = session.get('role')
     if not role:
-        return redirect(url_for('auth.login'))
+        return redirect('/login')
     
     if role == 'owner':
         batteries = app.supabase.table('batteries').eq('user_id', session['user_id']).execute().data or []
@@ -23,33 +22,25 @@ def dashboard():
         return render_template('dashboard_center.html', requests=requests)
     
     elif role == 'admin':
-        return redirect(url_for('main.admin_dashboard'))
+        pending_centers = app.supabase.table('centers').eq('status', 'pending').execute().data or []
+        return render_template('dashboard_admin.html', pending_centers=pending_centers)
     
-    return redirect(url_for('auth.login'))
-
-@main_bp.route('/admin/dashboard')
-def admin_dashboard():
-    if session.get('role') != 'admin':
-        flash('Access denied')
-        return redirect(url_for('dashboard'))
-    
-    # ✅ FIXES "Loading centers..."
-    pending_centers = app.supabase.table('centers').eq('status', 'pending').execute().data or []
-    return render_template('dashboard_admin.html', pending_centers=pending_centers)
+    return redirect('/login')
 
 @main_bp.route('/admin/approve/<center_id>')
 def approve_center(center_id):
     if session.get('role') != 'admin':
-        return redirect(url_for('main.admin_dashboard'))
+        flash('Access denied')
+        return redirect('/dashboard')
     
     app.supabase.table('centers').update({'status': 'approved'}).eq('id', center_id).execute()
     flash('✅ Center approved!')
-    return redirect(url_for('main.admin_dashboard'))
+    return redirect('/dashboard')
 
 @main_bp.route('/add_battery', methods=['GET', 'POST'])
 def add_battery():
     if session.get('role') != 'owner':
-        return redirect(url_for('dashboard'))
+        return redirect('/dashboard')
     
     if request.method == 'POST':
         data = {
@@ -63,7 +54,7 @@ def add_battery():
         }
         app.supabase.table('batteries').insert(data).execute()
         flash('✅ Battery added!')
-        return redirect(url_for('main.dashboard'))
+        return redirect('/dashboard')
     
     return render_template('add_battery.html')
 
@@ -106,16 +97,14 @@ def process_request(request_id):
         'status': decision
     }).eq('id', battery['id']).execute()
     
-    app.supabase.table('pickup_requests').update({
-        'status': decision
-    }).eq('id', request_id).execute()
+    app.supabase.table('pickup_requests').update({'status': decision}).eq('id', request_id).execute()
     
     return jsonify({'success': True, 'grade': grade})
 
 @main_bp.route('/analytics')
 def analytics():
     if session.get('role') != 'admin':
-        return redirect(url_for('dashboard'))
+        return redirect('/dashboard')
     
     total = app.supabase.table('batteries').select('count').execute().data[0]['count']
     return render_template('analytics.html', total=total)
