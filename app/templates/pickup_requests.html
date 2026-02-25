@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Pickup Requests</h2>
+
+{% if current_user.role == 'owner' %}
+    <h4>Your Pickup Requests</h4>
+    <div class="row">
+        {% for req in current_user.requests %}
+        <div class="col-md-6 mb-3">
+            <div class="card">
+                <div class="card-body">
+                    <h6>{{ req.battery.battery_id }}</h6>
+                    <p><strong>Status:</strong> 
+                        <span class="badge {{ 'bg-success' if req.status=='Picked' else 'bg-warning' if req.status=='Processed' else 'bg-info' }}">
+                            {{ req.status }}
+                        </span>
+                    </p>
+                    <p><small class="text-muted">Requested: {{ req.created_at.strftime('%Y-%m-%d %H:%M') }}</small></p>
+                    {% if req.center %}
+                        <p><strong>Processed by:</strong> {{ req.center.username }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="col-12">
+            <div class="alert alert-info">No pickup requests found.</div>
+        </div>
+        {% endfor %}
+    </div>
+    
+{% elif current_user.role == 'center' %}
+    <h4>Pending Pickup Requests</h4>
+    
+    {% if requests %}
+    <div class="row">
+        {% for req in requests %}
+        <div class="col-md-6 mb-3">
+            <div class="card border-primary">
+                <div class="card-header d-flex justify-content-between">
+                    <strong>{{ req.battery.battery_id }}</strong>
+                    <span class="badge bg-info">{{ req.status }}</span>
+                </div>
+                <div class="card-body">
+                    <p><strong>Owner:</strong> {{ req.battery.owner.username }}</p>
+                    <p><strong>Model:</strong> {{ req.battery.vehicle_model }}</p>
+                    <p><strong>Capacity:</strong> {{ req.battery.capacity }} kWh</p>
+                    <p><strong>Usage:</strong> {{ req.battery.usage_years }} years</p>
+                    
+                    <form method="POST" action="{{ url_for('main.process_request', request_id=req.id) }}" class="mt-3">
+                        <div class="row mb-2">
+                            <div class="col-md-6">
+                                <select class="form-control" name="decision" required>
+                                    <option value="">Select Action</option>
+                                    <option value="Reuse">Mark for Reuse</option>
+                                    <option value="Recycle">Mark for Recycling</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <button type="submit" class="btn btn-success w-100">
+                                    Process Battery
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="alert alert-info">No pending pickup requests.</div>
+    {% endif %}
+
+{% else %}
+    <div class="alert alert-warning">Access restricted to owners and centers only.</div>
+{% endif %}
+
+<div class="mt-4">
+    <a href="{{ url_for('main.dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+</div>
+{% endblock %}

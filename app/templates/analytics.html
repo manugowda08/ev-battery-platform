@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <h2 class="mb-4">📊 Analytics Dashboard</h2>
+
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="card bg-primary text-white text-center">
+                <div class="card-body">
+                    <h5>Total Batteries</h5>
+                    <h2>{{ total }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card bg-success text-white text-center">
+                <div class="card-body">
+                    <h5>Reuse</h5>
+                    <h2>{{ reuse }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card bg-danger text-white text-center">
+                <div class="card-body">
+                    <h5>Recycle</h5>
+                    <h2>{{ recycle }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card bg-warning text-white text-center">
+                <div class="card-body">
+                    <h5>Pending</h5>
+                    <h2>{{ pending }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="row mb-4">
+        <div class="col-md-6 mb-3">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5>📈 Battery Status Distribution</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="statusChart" width="400" height="400"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 mb-3">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5>🎯 ML Battery Grades</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="gradeChart" width="400" height="400"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Back button -->
+    <a href="{{ url_for('main.dashboard') }}" class="btn btn-secondary">← Back to Dashboard</a>
+</div>
+
+<!-- ✅ ALL-IN-ONE SCRIPT - NO EXTERNAL FILES -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ✅ SAFE createPieChart function
+    function createPieChart(canvasId, labels, data) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) {
+            console.error('Canvas not found:', canvasId);
+            return;
+        }
+        
+        const ctx = canvas.getContext('2d');
+        new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: data,
+                    backgroundColor: ['#28a745', '#dc3545', '#ffc107', '#17a2b8'],
+                    borderWidth: 3,
+                    borderColor: '#fff',
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { padding: 20, usePointStyle: true }
+                    }
+                }
+            }
+        });
+    }
+
+    // ✅ SAFE chart creation
+    const reuse = {{ reuse|default(0) }};
+    const recycle = {{ recycle|default(0) }};
+    const pending = {{ pending|default(0) }};
+    const grade_a = {{ grade_a|default(0) }};
+    const grade_b = {{ grade_b|default(0) }};
+    const grade_c = {{ grade_c|default(0) }};
+
+    // Create charts
+    createPieChart('statusChart', ['Reuse', 'Recycle', 'Pending'], [reuse, recycle, pending]);
+    createPieChart('gradeChart', ['Grade A', 'Grade B', 'Grade C'], [grade_a, grade_b, grade_c]);
+});
+</script>
+{% endblock %}

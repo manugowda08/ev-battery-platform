@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h3>Add Battery</h3>
+                <form method="POST">
+                    <div class="mb-3">
+                        <label class="form-label">Battery ID</label>
+                        <input type="text" class="form-control" name="battery_id" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Vehicle Model</label>
+                        <input type="text" class="form-control" name="vehicle_model" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Capacity (kWh)</label>
+                        <input type="number" step="0.1" class="form-control" name="capacity" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Usage Years</label>
+                        <input type="number" step="0.1" class="form-control" name="usage_years" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Add Battery</button>
+                </form>
+                <a href="{{ url_for('main.dashboard') }}" class="btn btn-secondary w-100 mt-2">Back to Dashboard</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

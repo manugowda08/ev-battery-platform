@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>🔄 Recycling Center Dashboard</h2>
+
+{% if requests %}
+<div class="row">
+    {% for req in requests %}
+    <div class="col-md-6 mb-3" id="card-{{ req.id }}">
+        <div class="card border-primary">
+            <div class="card-header d-flex justify-content-between">
+                <strong>{{ req.battery.battery_id }}</strong>
+                <span class="badge bg-warning">Pending</span>
+            </div>
+            <div class="card-body">
+                <p><strong>Owner:</strong> {{ req.battery.owner.username }}</p>
+                <p><strong>Model:</strong> {{ req.battery.vehicle_model }}</p>
+                <p><strong>Capacity:</strong> {{ req.battery.capacity }} kWh</p>
+                <p><strong>Usage:</strong> {{ "%.1f"|format(req.battery.usage_years) }} years</p>
+                
+                <!-- ✅ CLICK TO PROCESS -->
+                <button class="btn btn-success w-100 process-btn mb-2"
+                        data-request-id="{{ req.id }}"
+                        data-battery-name="{{ req.battery.battery_id }}">
+                    🤖 Process & ML Grade
+                </button>
+                
+                <!-- ✅ HIDDEN PROCESSING FORM -->
+                <div class="process-form" id="form-{{ req.id }}" style="display: none;">
+                    <select class="form-control mb-2" id="decision-{{ req.id }}">
+                        <option value="">Choose action after grading...</option>
+                        <option value="Reuse">♻️ Mark for Reuse</option>
+                        <option value="Recycle">🔄 Mark for Recycling</option>
+                    </select>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-primary flex-fill submit-process" 
+                                data-request-id="{{ req.id }}">✅ Process Now</button>
+                        <button class="btn btn-secondary cancel-process" 
+                                data-request-id="{{ req.id }}">❌ Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="alert alert-info">No pending requests yet.</div>
+{% endif %}
+
+<!-- ✅ GLOBAL MESSAGE AREA -->
+<div id="global-message" class="alert mt-4" style="display: none;"></div>
+
+<a href="{{ url_for('main.pickup_requests') }}" class="btn btn-info mt-3">📋 All Requests</a>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    
+    // 1. Show process form
+    document.querySelectorAll('.process-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const reqId = this.dataset.requestId;
+            document.getElementById('form-' + reqId).style.display = 'block';
+            this.style.display = 'none';
+        });
+    });
+    
+    // 2. Cancel button
+    document.querySelectorAll('.cancel-process').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const reqId = this.dataset.requestId;
+            document.getElementById('form-' + reqId).style.display = 'none';
+            document.querySelector(`[data-request-id="${reqId}"].process-btn`).style.display = 'block';
+        });
+    });
+    
+    // 3. ✅ AJAX PROCESS - SHOW MESSAGE ON SAME PAGE
+    document.querySelectorAll('.submit-process').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            const reqId = this.dataset.requestId;
+            const batteryName = document.querySelector(`[data-request-id="${reqId}"].process-btn`).dataset.batteryName;
+            const decision = document.getElementById('decision-' + reqId).value;
+            const messageDiv = document.getElementById('global-message');
+            const card = document.getElementById('card-' + reqId);
+            
+            if (!decision) {
+                alert('Please select Reuse or Recycle');
+                return;
+            }
+            
+            // Loading
+            this.innerHTML = '⏳ Grading...';
+            this.disabled = true;
+            
+            // AJAX POST
+            fetch(`/process_request/${reqId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `decision=${decision}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // ✅ SUCCESS MESSAGE ON PAGE
+                    messageDiv.className = 'alert alert-success mt-4';
+                    messageDiv.innerHTML = `<strong>${data.message}</strong>`;
+                    messageDiv.style.display = 'block';
+                    
+                    // Hide processed card
+                    card.style.opacity = '0.5';
+                    card.querySelector('.process-btn, .process-form').innerHTML = 
+                        `<span class="badge fs-6 bg-success">✅ PROCESSED: ${data.grade} → ${decision}</span>`;
+                    
+                    // Scroll to message
+                    messageDiv.scrollIntoView({ behavior: 'smooth' });
+                } else {
+                    // ❌ ERROR
+                    messageDiv.className = 'alert alert-danger mt-4';
+                    messageDiv.innerHTML = `<strong>❌ ${data.error || 'Error occurred'}</strong>`;
+                    messageDiv.style.display = 'block';
+                }
+            })
+            .catch(error => {
+                messageDiv.className = 'alert alert-danger mt-4';
+                messageDiv.innerHTML = '<strong>❌ Network error. Try again.</strong>';
+                messageDiv.style.display = 'block';
+            })
+            .finally(() => {
+                this.innerHTML = '✅ Process Now';
+                this.disabled = false;
+            });
+        });
+    });
+});
+</script>
+{% endblock %}

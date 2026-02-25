@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>EV Owner Dashboard</h2>
+
+{% if batteries %}
+<div class="row">
+    {% for battery in batteries %}
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between">
+                <strong>{{ battery.battery_id }}</strong>
+                <span class="badge bg-{{ 'success' if battery.grade != 'Pending' else 'warning' }}">
+                    {{ battery.grade if battery.grade != 'Pending' else 'Pending' }}
+                </span>
+            </div>
+            <div class="card-body">
+                <p><strong>Model:</strong> {{ battery.vehicle_model }}</p>
+                <p><strong>Capacity:</strong> {{ battery.capacity }} kWh</p>
+                <p><strong>Usage:</strong> {{ "%.1f"|format(battery.usage_years) }} years</p>
+                
+                {% if not battery.requests %}
+                <!-- ✅ AJAX Request Pickup Button -->
+                <button class="btn btn-primary request-pickup-btn" 
+                        data-battery-id="{{ battery.id }}"
+                        data-battery-name="{{ battery.battery_id }}">
+                    🚚 Request Pickup
+                </button>
+                {% else %}
+                <span class="badge bg-info fs-6">📦 Pickup Requested</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="alert alert-info">
+    No batteries added. <a href="{{ url_for('main.add_battery') }}">Add your first battery</a>
+</div>
+{% endif %}
+
+<!-- ✅ Success/Error Message Container -->
+<div id="pickup-message" class="alert mt-3" style="display: none;"></div>
+
+<a href="{{ url_for('main.add_battery') }}" class="btn btn-success mt-3">
+    ➕ Add New Battery
+</a>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ✅ AJAX Request Pickup
+    document.querySelectorAll('.request-pickup-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            const button = this;
+            const batteryId = this.dataset.batteryId;
+            const batteryName = this.dataset.batteryName;
+            
+            // Disable button + show loading
+            button.disabled = true;
+            button.innerHTML = '⏳ Requesting...';
+            
+            fetch(`/request_pickup/${batteryId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // ✅ Show success message
+                    const messageDiv = document.getElementById('pickup-message');
+                    messageDiv.className = 'alert alert-success mt-3';
+                    messageDiv.innerHTML = data.message;
+                    messageDiv.style.display = 'block';
+                    
+                    // Update button
+                    button.className = 'badge bg-info fs-6';
+                    button.innerHTML = '📦 Pickup Requested';
+                    button.disabled = true;
+                } else {
+                    // ❌ Show error
+                    const messageDiv = document.getElementById('pickup-message');
+                    messageDiv.className = 'alert alert-danger mt-3';
+                    messageDiv.innerHTML = data.error || 'Error occurred';
+                    messageDiv.style.display = 'block';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                const messageDiv = document.getElementById('pickup-message');
+                messageDiv.className = 'alert alert-danger mt-3';
+                messageDiv.innerHTML = '❌ Network error. Please try again.';
+                messageDiv.style.display = 'block';
+            })
+            .finally(() => {
+                // Re-enable button after 2 seconds
+                setTimeout(() => {
+                    button.disabled = false;
+                }, 2000);
+            });
+        });
+    });
+});
+</script>
+
+{% endblock %}
