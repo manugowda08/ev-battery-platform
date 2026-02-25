@@ -6,17 +6,14 @@ def create_app():
     app.secret_key = os.getenv('SECRET_KEY', 'dev-secret')
     
     # Safe Supabase client setup
-    @app.before_request
-    def setup_supabase():
-        try:
-            from supabase import create_client
-            app.supabase = create_client(
-                os.getenv('SUPABASE_URL'),
-                os.getenv('SUPABASE_ANON_KEY')
-            )
-        except Exception as e:
-            print(f"Supabase setup error: {e}")
-            app.supabase = None
+   @app.before_request
+def setup_supabase():
+    try:
+        from supabase import create_client
+        app.supabase = create_client(os.getenv('SUPABASE_URL'), os.getenv('SUPABASE_ANON_KEY'))
+    except:
+        app.supabase = None  # Graceful fallback
+
     
     @app.route('/')
     def index():
