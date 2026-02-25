@@ -1,26 +1,30 @@
-from flask import Flask
-from flask_login import LoginManager
-from .config import Config
-from supabase import create_client, Client
+from flask import Flask, session, request
 import os
+from supabase import create_client, Client
 
-db = None  # Keep for compatibility
-login_manager = LoginManager()
-login_manager.login_view = 'main.login'
-
-def create_app(config_class=Config):
+def create_app():
     app = Flask(__name__)
-    app.config.from_object(config_class)
+    app.secret_key = os.getenv('SECRET_KEY', 'dev-secret')
     
-    # Global Supabase client
+    # Supabase client
     @app.before_request
     def setup_supabase():
-        app.supabase = Config.get_supabase()
+        app.supabase = create_client(
+            os.getenv('SUPABASE_URL'),
+            os.getenv('SUPABASE_ANON_KEY')
+        )
     
-    # Flask-Login
-    login_manager.init_app(app)
+    # Test route
+    @app.route('/')
+    def index():
+        return "✅ EV Battery Platform LIVE!"
     
-    from app.main import main_bp
-    app.register_blueprint(main_bp)
+    @app.route('/test')
+    def test():
+        try:
+            users = app.supabase.table('users').select('count').execute()
+            return f"✅ Supabase OK! {len(users.data)} users"
+        except:
+            return "❌ Supabase config missing"
     
     return app
