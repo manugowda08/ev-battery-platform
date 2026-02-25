@@ -2,27 +2,25 @@ from app import db, login_manager
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
+from supabase import Client
 
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-class User(UserMixin, db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(128), nullable=False)
-    role = db.Column(db.String(20), nullable=False)  # 'owner', 'center', 'admin'
-    is_approved = db.Column(db.Boolean, default=False)
+
+class User:
+    def __init__(self, supabase: Client):
+        self.supabase = supabase
     
-    batteries = db.relationship('Battery', backref='owner', lazy=True)
-    requests = db.relationship('PickupRequest', backref='owner', lazy=True)
+    def get_by_email(self, email):
+        return self.supabase.table('users').select('*').eq('email', email).execute()
     
-    def set_password(self, password):
-        self.password_hash = generate_password_hash(password)
-    
-    def check_password(self, password):
-        return check_password_hash(self.password_hash, password)
+    def create(self, email, password, role):
+        return self.supabase.table('users').insert({
+            'email': email, 'password': password, 'role': role, 'approved': True
+        }).execute()
+
 
 class Battery(db.Model):
     id = db.Column(db.Integer, primary_key=True)
