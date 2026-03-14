@@ -7,17 +7,18 @@ app.secret_key = os.getenv('SECRET_KEY', 'dev-secret')
 # Global Supabase client
 supabase_client = None
 
-@app.before_first_request
+@app.before_request
 def setup_supabase():
     global supabase_client
-    try:
-        from supabase import create_client
-        supabase_client = create_client(
-            os.getenv('SUPABASE_URL'),
-            os.getenv('SUPABASE_ANON_KEY')
-        )
-    except:
-        supabase_client = None
+    if supabase_client is None:
+        try:
+            from supabase import create_client
+            supabase_client = create_client(
+                os.getenv('SUPABASE_URL'),
+                os.getenv('SUPABASE_ANON_KEY')
+            )
+        except:
+            supabase_client = None
 
 @app.route('/')
 def index():
@@ -40,7 +41,7 @@ def login():
         email = request.form.get('email', '')
         password = request.form.get('password', '')
         
-        # HARDCODED DEMO USERS (WORKS 100%)
+        # HARDCODED DEMO USERS (100% WORKS)
         users = {
             'admin@localhost.com': {'role': 'admin', 'id': '1'},
             'owner1@localhost.com': {'role': 'owner', 'id': '2'},
