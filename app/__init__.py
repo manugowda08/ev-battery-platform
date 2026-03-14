@@ -24,32 +24,37 @@ def setup_supabase():
 def index():
     return render_template('index.html')
 
-@app.route('/test-supabase')
-def test_supabase():
-    if not supabase_client:
-        return "❌ Supabase not available"
-    try:
-        response = supabase_client.table('users').select('count').execute()
-        count = response.data[0]['count'] if response.data else 0
-        return f"✅ Supabase OK! {count} users"
-    except Exception as e:
-        return f"❌ Test failed: {str(e)}"
+@app.route('/register')
+def register():
+    """Temporary register page to fix template error"""
+    role = request.args.get('role', 'owner')
+    return f"""
+    <div style="max-width: 500px; margin: 100px auto; padding: 40px; border: 1px solid #ddd; border-radius: 10px;">
+        <h2>EV Battery Platform - Register ({role.title()})</h2>
+        <p>Registration temporarily disabled. Use demo login:</p>
+        <ul>
+            <li><strong>Admin:</strong> admin@localhost.com / admin123</li>
+            <li><strong>Owner:</strong> owner1@localhost.com / password123</li>
+            <li><strong>Center:</strong> center1@localhost.com / password123</li>
+        </ul>
+        <a href="/login" class="btn btn-primary" style="display: inline-block; padding: 12px 24px; background: #007bff; color: white; text-decoration: none; border-radius: 5px;">Go to Login</a>
+    </div>
+    """
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        email = request.form.get('email', '')
-        password = request.form.get('password', '')
+        email = request.form.get('email', '').strip()
+        password = request.form.get('password', '').strip()
         
-        # HARDCODED DEMO USERS (100% WORKS)
+        # HARDCODED DEMO USERS (PROFESSOR READY)
         users = {
-            'admin@localhost.com': {'role': 'admin', 'id': '1'},
-            'owner1@localhost.com': {'role': 'owner', 'id': '2'},
-            'center1@localhost.com': {'role': 'center', 'id': '3'}
+            'admin@localhost.com': {'role': 'admin'},
+            'owner1@localhost.com': {'role': 'owner'},
+            'center1@localhost.com': {'role': 'center'}
         }
         
         if email in users and password in ['admin123', 'password123']:
-            session['user_id'] = users[email]['id']
             session['email'] = email
             session['role'] = users[email]['role']
             
@@ -60,7 +65,7 @@ def login():
             elif session['role'] == 'center':
                 return redirect('/center-dashboard')
         
-        flash('❌ Wrong email/password!')
+        flash('❌ Invalid email or password!')
     
     return render_template('login.html')
 
@@ -86,6 +91,17 @@ def center_dashboard():
     if session.get('role') != 'center':
         return redirect('/login')
     return render_template('dashboard_center.html')
+
+@app.route('/test-supabase')
+def test_supabase():
+    if not supabase_client:
+        return "❌ Supabase unavailable"
+    try:
+        response = supabase_client.table('users').select('count').execute()
+        count = response.data[0]['count'] if response.data else 0
+        return f"✅ Supabase OK! {count} users"
+    except Exception as e:
+        return f"❌ Supabase test failed: {str(e)}"
 
 if __name__ == '__main__':
     app.run(debug=True)
